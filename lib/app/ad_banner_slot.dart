@@ -13,7 +13,7 @@ class AdBannerSlot extends StatefulWidget {
 
 class _AdBannerSlotState extends State<AdBannerSlot> {
   static const _testIosBannerId = 'ca-app-pub-3940256099942544/2934735716';
-  static const _releaseBannerId = String.fromEnvironment('ADMOB_IOS_BANNER_ID');
+  static const _releaseBannerId = 'ca-app-pub-8572237347685622/8817738951';
 
   BannerAd? _banner;
   bool _loaded = false;

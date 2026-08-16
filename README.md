@@ -22,7 +22,7 @@ HTML POCをもとにしたiOS向けFlutterアプリです。
 
 1. AdMobでiOSアプリとバナー広告ユニットを作成する
 2. `ios/Runner/Info.plist`の`GADApplicationIdentifier`を本番App IDへ変更する
-3. `--dart-define=ADMOB_IOS_BANNER_ID=本番広告ユニットID`を付けてビルドする
+3. Releaseビルドでは本番広告ユニットID、DebugビルドではGoogle公式テストIDが自動で使われる
 4. App Store Connectで非消耗型商品`com.ryushin.studycollection.remove_ads`を作成する
 5. App Privacyの回答を広告SDKのデータ利用に合わせて更新する
 
