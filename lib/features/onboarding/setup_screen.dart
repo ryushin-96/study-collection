@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../app/common_widgets.dart';
+import '../../app/ad_banner_slot.dart';
 import '../../app/theme.dart';
-import '../../data/models/notebook_theme.dart';
 import '../../data/repositories/app_state.dart';
 import '../../data/storage/image_storage.dart';
 
@@ -78,6 +78,7 @@ class _SetupScreenState extends State<SetupScreen> {
       animation: widget.state,
       builder: (context, _) {
         return Scaffold(
+          bottomNavigationBar: const AdBannerSlot(),
           body: SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
@@ -122,13 +123,6 @@ class _SetupScreenState extends State<SetupScreen> {
     ],
   );
 
-  String _goalLabel(NotebookThemeData item) {
-    if (item.debugOnly) return '10秒で完成';
-    if (item.id == 'heart') return '0〜1時間';
-    if (item.id == 'jewel') return '10時間以上';
-    return '${item.goalSeconds ~/ 3600}時間';
-  }
-
   Widget photoStep() {
     return SingleChildScrollView(
       padding: EdgeInsets.only(
@@ -148,7 +142,7 @@ class _SetupScreenState extends State<SetupScreen> {
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String?>(
-            value: defaultSubject,
+            initialValue: defaultSubject,
             decoration: const InputDecoration(labelText: 'デフォルト教科（未指定可）'),
             items: [
               const DropdownMenuItem<String?>(value: null, child: Text('未指定')),

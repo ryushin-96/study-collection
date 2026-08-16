@@ -16,6 +16,18 @@ HTML POCをもとにしたiOS向けFlutterアプリです。
 
 `com.ryushin.studycollection`
 
+## 広告・プレミアムのリリース設定
+
+開発ビルドではGoogle公式のテスト広告を使用します。本番リリース前に次を設定してください。
+
+1. AdMobでiOSアプリとバナー広告ユニットを作成する
+2. `ios/Runner/Info.plist`の`GADApplicationIdentifier`を本番App IDへ変更する
+3. `--dart-define=ADMOB_IOS_BANNER_ID=本番広告ユニットID`を付けてビルドする
+4. App Store Connectで非消耗型商品`com.ryushin.studycollection.remove_ads`を作成する
+5. App Privacyの回答を広告SDKのデータ利用に合わせて更新する
+
+本番広告ユニットIDが未指定の場合、リリースビルドでは広告枠を表示しません。
+
 ## 起動
 
 ```bash

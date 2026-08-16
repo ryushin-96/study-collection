@@ -7,6 +7,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/common_widgets.dart';
+import '../../app/ad_banner_slot.dart';
 import '../../app/formatters.dart';
 import '../../app/theme.dart';
 import '../../data/repositories/app_state.dart';
@@ -142,6 +143,7 @@ class _StudyTimerPageState extends State<StudyTimerPage>
       },
       child: Scaffold(
         backgroundColor: Colors.transparent,
+        bottomNavigationBar: const AdBannerSlot(),
         body: Stack(
           children: [
             if (widget.state.activeImagePath != null)
@@ -164,7 +166,7 @@ class _StudyTimerPageState extends State<StudyTimerPage>
                         ),
                         fit: BoxFit.cover,
                         colorFilter: ColorFilter.mode(
-                            Colors.black.withValues(alpha: 0.25),
+                          Colors.black.withValues(alpha: 0.25),
                           BlendMode.darken,
                         ),
                       ),

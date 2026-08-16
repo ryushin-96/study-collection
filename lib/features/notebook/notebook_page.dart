@@ -294,7 +294,7 @@ class _NotebookPageState extends State<NotebookPage> {
       final storedPath = await ImageStorage.import(picked.path);
       final destination = ImageStorage.resolve(storedPath);
       try {
-        if (!mounted) return;
+        if (!mounted || !context.mounted) return;
         await precacheImage(
           ResizeImage(FileImage(File(destination)), width: 1200),
           context,
@@ -340,7 +340,7 @@ class _NotebookPageState extends State<NotebookPage> {
                         ),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String?>(
-                          value: defaultSubject,
+                          initialValue: defaultSubject,
                           decoration: const InputDecoration(
                             labelText: 'デフォルト教科（未指定可）',
                           ),
@@ -423,7 +423,7 @@ class _NotebookPageState extends State<NotebookPage> {
         title: titleController.text,
       );
       // Ensure the page rebuilds and provide feedback so user can see result.
-      if (!mounted) return;
+      if (!mounted || !context.mounted) return;
       setState(() {});
       ScaffoldMessenger.of(
         context,
