@@ -14,38 +14,41 @@ class CollectionPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: state,
-      builder: (context, _) => ListView(
-        padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
-        children: [
-          pageHeader('コレクション', '勉強して集めたピースが表示されます。'),
-          if (state.derivedPieces.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 4,
-              mainAxisSpacing: 7,
-              crossAxisSpacing: 7,
-              childAspectRatio: 0.72,
-              children: state.derivedPieces.map((piece) {
-                return GestureDetector(
-                  onTap: () => showPieceEditor(context, state, piece),
-                  child: DevelopingPhoto(
-                    imagePath: piece['imagePath'] as String?,
-                    progress: (piece['opacity'] as double).clamp(0.0, 1.0),
-                  ),
-                );
-              }).toList(),
-            ),
+      builder: (context, _) {
+        final pieces = state.collectionPieces;
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
+          children: [
+            pageHeader('コレクション', '勉強して集めたピースが表示されます。'),
+            if (pieces.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 4,
+                mainAxisSpacing: 7,
+                crossAxisSpacing: 7,
+                childAspectRatio: 0.72,
+                children: pieces.map((piece) {
+                  return GestureDetector(
+                    onTap: () => showPieceEditor(context, state, piece),
+                    child: DevelopingPhoto(
+                      imagePath: piece['imagePath'] as String?,
+                      progress: (piece['opacity'] as double).clamp(0.0, 1.0),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+            if (pieces.isEmpty)
+              const EmptyState(
+                icon: CupertinoIcons.square_grid_2x2,
+                title: 'ピースはまだありません',
+                message: '勉強を記録するとピースが追加されます',
+              ),
           ],
-          if (state.derivedPieces.isEmpty)
-            const EmptyState(
-              icon: CupertinoIcons.square_grid_2x2,
-              title: 'ピースはまだありません',
-              message: '勉強を記録するとピースが追加されます',
-            ),
-        ],
-      ),
+        );
+      },
     );
   }
 

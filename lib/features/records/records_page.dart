@@ -5,18 +5,37 @@ import '../../app/formatters.dart';
 import '../../app/theme.dart';
 import '../../data/repositories/app_state.dart';
 
-class RecordsPage extends StatelessWidget {
+class RecordsPage extends StatefulWidget {
   const RecordsPage({super.key, required this.state});
 
   final AppState state;
 
   @override
+  State<RecordsPage> createState() => _RecordsPageState();
+}
+
+class _RecordsPageState extends State<RecordsPage> {
+  String? selectedNotebookId;
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
     return AnimatedBuilder(
       animation: state,
       builder: (context, _) {
+        if (selectedNotebookId != null &&
+            !state.notebooks.any(
+              (notebook) => notebook.id == selectedNotebookId,
+            )) {
+          selectedNotebookId = null;
+        }
+        final filteredSessions = selectedNotebookId == null
+            ? state.sessions
+            : state.sessions
+                  .where((session) => session.notebookId == selectedNotebookId)
+                  .toList();
         final now = DateTime.now();
-        final today = state.sessions
+        final today = filteredSessions
             .where(
               (item) =>
                   item.at.year == now.year &&
@@ -25,15 +44,15 @@ class RecordsPage extends StatelessWidget {
             )
             .fold(0, (total, item) => total + item.seconds);
         final weekStart = now.subtract(const Duration(days: 7));
-        final week = state.sessions
+        final week = filteredSessions
             .where((item) => item.at.isAfter(weekStart))
             .fold(0, (total, item) => total + item.seconds);
-        final all = state.sessions.fold(
+        final all = filteredSessions.fold(
           0,
           (total, item) => total + item.seconds,
         );
         final bySubject = <String, int>{};
-        for (final item in state.sessions) {
+        for (final item in filteredSessions) {
           bySubject[item.subject] =
               (bySubject[item.subject] ?? 0) + item.seconds;
         }
@@ -45,6 +64,31 @@ class RecordsPage extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
           children: [
             pageHeader('勉強きろく', '時間もしっかり残ります。'),
+            DropdownButtonFormField<String?>(
+              key: ValueKey(
+                'notebook-filter-${state.notebooks.map((notebook) => notebook.id).join('-')}',
+              ),
+              initialValue: selectedNotebookId,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: '手帳で絞り込む'),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('すべての手帳'),
+                ),
+                ...state.notebooks.reversed.map(
+                  (notebook) => DropdownMenuItem<String?>(
+                    value: notebook.id,
+                    child: Text(
+                      notebook.title,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+              onChanged: (value) => setState(() => selectedNotebookId = value),
+            ),
+            const SizedBox(height: 14),
             Row(
               children: [
                 Expanded(
@@ -109,8 +153,16 @@ class RecordsPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            sectionTitle('すべての記録'),
-            ...state.sessions.reversed.map(sessionTile),
+            sectionTitle(selectedNotebookId == null ? 'すべての記録' : 'この手帳の記録'),
+            ...filteredSessions.reversed.map(sessionTile),
+            if (filteredSessions.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Text(
+                  'この手帳にはまだ記録がありません。',
+                  style: TextStyle(color: muted),
+                ),
+              ),
           ],
         );
       },

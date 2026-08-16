@@ -103,12 +103,18 @@
       .phone {
         width: min(390px, 92%);
         margin: 0 auto;
-        padding: 12px;
+        padding: 10px;
         border: 1px solid rgba(70, 56, 76, 0.12);
         border-radius: 46px;
         background: #332b36;
         box-shadow: var(--shadow);
         transform: rotate(2.5deg);
+      }
+      .hero-shot {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 37px;
       }
       .screen {
         overflow: hidden;
@@ -166,6 +172,20 @@
       .number { display: grid; width: 45px; height: 45px; place-items: center; margin-bottom: 44px; border-radius: 16px; color: var(--pink-deep); background: #fff0f5; font-weight: 900; }
       .card h3 { margin: 0 0 8px; font-size: 1.18rem; }
       .card p { margin: 0; color: var(--muted); font-size: .94rem; }
+      .cycle {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-top: 18px;
+        padding: 20px;
+        border: 1px solid var(--line);
+        border-radius: 26px;
+        background: rgba(255,255,255,.72);
+      }
+      .cycle-item { position: relative; padding: 15px 18px; }
+      .cycle-item:not(:last-child)::after { content: "→"; position: absolute; top: 50%; right: -13px; color: var(--pink-deep); font-weight: 900; transform: translateY(-50%); }
+      .cycle-item strong { display: block; margin-bottom: 3px; }
+      .cycle-item span { color: var(--muted); font-size: .84rem; }
 
       .feature-panel {
         display: grid;
@@ -182,6 +202,33 @@
       .check { flex: 0 0 auto; color: var(--pink-deep); font-weight: 900; }
       .feature-item strong { display: block; }
       .feature-item small { color: var(--muted); }
+
+      .screens-section { overflow: hidden; }
+      .screens-head { display: flex; align-items: end; justify-content: space-between; gap: 30px; }
+      .screens-head .section-head { margin-bottom: 44px; }
+      .screens-note { max-width: 300px; margin-bottom: 48px; color: var(--muted); font-size: .9rem; }
+      .screens {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        align-items: stretch;
+      }
+      .shot-card {
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        padding: 12px 12px 22px;
+        border: 1px solid var(--line);
+        border-radius: 34px;
+        background: rgba(255,255,255,.86);
+        box-shadow: 0 20px 55px rgba(101,70,92,.1);
+      }
+      .shot-card img { display: block; width: 100%; height: auto; aspect-ratio: 1179 / 2556; object-fit: cover; border-radius: 25px; }
+      .shot-caption { padding: 19px 10px 2px; }
+      .shot-caption span { color: var(--pink-deep); font-size: .72rem; font-weight: 900; letter-spacing: .11em; }
+      .shot-caption h3 { margin: 3px 0 5px; font-size: 1.15rem; }
+      .shot-caption p { margin: 0; color: var(--muted); font-size: .86rem; }
 
       .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; counter-reset: step; }
       .step { position: relative; padding: 28px 24px; border-top: 2px solid var(--line); }
@@ -212,10 +259,14 @@
         .lead { margin-inline: auto; }
         .actions { justify-content: center; }
         .cards { grid-template-columns: 1fr; }
+        .cycle { grid-template-columns: 1fr; }
+        .cycle-item:not(:last-child)::after { content: "↓"; top: auto; right: 50%; bottom: -17px; transform: translateX(50%); }
         .card { min-height: 0; }
         .number { margin-bottom: 28px; }
         .feature-panel { grid-template-columns: 1fr; padding: 34px 22px; }
         .steps { grid-template-columns: repeat(2, 1fr); }
+        .screens { grid-template-columns: repeat(4, minmax(245px, 1fr)); overflow-x: auto; padding: 0 4px 28px; scroll-snap-type: x mandatory; }
+        .shot-card { scroll-snap-align: center; }
       }
       @media (max-width: 520px) {
         .wrap { width: min(100% - 28px, 1120px); }
@@ -224,7 +275,8 @@
         section { padding: 76px 0; }
         .steps { grid-template-columns: 1fr; }
         .phone { width: 100%; transform: none; }
-        .screen { min-height: 590px; }
+        .screens-head { display: block; }
+        .screens-note { margin-top: -26px; margin-bottom: 34px; }
         footer .wrap { display: block; }
       }
       @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
@@ -257,18 +309,8 @@
           </div>
         </div>
 
-        <div class="phone" aria-label="アプリ画面のイメージ">
-          <div class="screen">
-            <div class="phone-bar"></div>
-            <div class="screen-label">わたしのStudy手帳 ♡</div>
-            <div class="photo"></div>
-            <div class="progress-row"><span>現像中</span><span>42%</span></div>
-            <div class="progress-track"><span></span></div>
-            <div class="timer-card">
-              <div class="subject"><span>今日の教科</span><span>英語⌄</span></div>
-              <div class="start">ストップウォッチを始める</div>
-            </div>
-          </div>
+        <div class="phone" aria-label="Study手帳画面">
+          <img class="hero-shot" src="assets/images/home.png" width="1179" height="2556" alt="推しとStudyの手帳画面。完成した推しフォトと学習記録、勉強開始メニューが表示されている様子" fetchpriority="high" />
         </div>
       </div>
 
@@ -292,8 +334,43 @@
             </article>
             <article class="card">
               <div class="number">03</div>
-              <h3>努力がコレクションに</h3>
-              <p>完成した手帳はコレクションへ。勉強した時間と教科を、一枚ごとの思い出として振り返れます。</p>
+              <h3>規定時間ごとにコレクションへ</h3>
+              <p>手帳の規定時間に到達するたび、完成した推しフォトが新しいピースとしてコレクションに加わります。</p>
+            </article>
+          </div>
+          <div class="cycle" aria-label="手帳とコレクションの流れ">
+            <div class="cycle-item"><strong>手帳で勉強する</strong><span>規定時間までは、写真が少しずつ見えてくる。</span></div>
+            <div class="cycle-item"><strong>ピースが完成する</strong><span>規定時間に到達すると、コレクションへ1枚追加。</span></div>
+            <div class="cycle-item"><strong>そのまま続ける</strong><span>手帳は完成表示のまま継続。次の規定時間で、もう1枚追加。</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screens-section" id="screens">
+        <div class="wrap">
+          <div class="screens-head">
+            <div class="section-head">
+              <p class="eyebrow">APP SCREENS</p>
+              <h2>勉強の時間も、<br />振り返る時間もかわいく。</h2>
+            </div>
+            <p class="screens-note">計測から記録、コレクションまで。頑張った時間がひとつのアプリにつながります。</p>
+          </div>
+          <div class="screens">
+            <article class="shot-card">
+              <img src="assets/images/home.png" width="1179" height="2556" alt="推しフォトと学習情報を表示する手帳画面" loading="lazy" />
+              <div class="shot-caption"><span>STUDY NOTEBOOK</span><h3>育てるStudy手帳</h3><p>規定時間まで勉強すると推しフォトが完成。そのまま同じ手帳を使い続けられます。</p></div>
+            </article>
+            <article class="shot-card">
+              <img src="assets/images/timer.png" width="1179" height="2556" alt="集中タイムの画面" loading="lazy" />
+              <div class="shot-caption"><span>FOCUS</span><h3>推しと集中タイム</h3><p>お気に入りの一枚をそばに、ストップウォッチやタイマーで勉強。</p></div>
+            </article>
+            <article class="shot-card">
+              <img src="assets/images/collections.png" width="1179" height="2556" alt="集めたピースを表示するコレクション画面" loading="lazy" />
+              <div class="shot-caption"><span>COLLECTION</span><h3>規定時間ごとに1ピース</h3><p>途中は現像中の姿で表示。規定時間に到達するたび、同じ画像の完成ピースが新しく加わります。</p></div>
+            </article>
+            <article class="shot-card">
+              <img src="assets/images/study_log.png" width="1179" height="2556" alt="教科別の勉強時間と記録を表示する画面" loading="lazy" />
+              <div class="shot-caption"><span>STUDY LOG</span><h3>時間をしっかり記録</h3><p>今日・今週・合計や教科ごとの勉強時間を、あとから振り返れます。</p></div>
             </article>
           </div>
         </div>
@@ -309,8 +386,8 @@
           <div class="feature-list">
             <div class="feature-item"><span class="check">♡</span><div><strong>ストップウォッチ＆タイマー</strong><small>自分の勉強スタイルに合わせて計測できます。</small></div></div>
             <div class="feature-item"><span class="check">♡</span><div><strong>教科ごとの学習記録</strong><small>教科を自由に追加し、デフォルト教科も設定できます。</small></div></div>
-            <div class="feature-item"><span class="check">♡</span><div><strong>手帳デザインと完成目標</strong><small>4種類の手帳から、目指したい勉強時間を選べます。</small></div></div>
-            <div class="feature-item"><span class="check">♡</span><div><strong>記録とコレクション</strong><small>今日・今週・合計の時間と、完成した推しフォトを残せます。</small></div></div>
+            <div class="feature-item"><span class="check">♡</span><div><strong>使い続けられるStudy手帳</strong><small>規定時間で写真が完成。完成後も同じ手帳を、その状態のまま使い続けられます。</small></div></div>
+            <div class="feature-item"><span class="check">♡</span><div><strong>増えていくコレクション</strong><small>規定時間に到達するたび、同じ画像でも新しい完成ピースとして追加されます。</small></div></div>
           </div>
         </div>
       </section>
@@ -325,7 +402,7 @@
             <article class="step"><h3>手帳を選ぶ</h3><p>好みのデザインと、完成までの目標時間を選びます。</p></article>
             <article class="step"><h3>写真をセット</h3><p>端末から、育てたいお気に入りの一枚を設定します。</p></article>
             <article class="step"><h3>勉強を計測</h3><p>教科を選び、ストップウォッチまたはタイマーを開始します。</p></article>
-            <article class="step"><h3>完成を集める</h3><p>勉強するほど写真が見え、100%になるとコレクションへ加わります。</p></article>
+            <article class="step"><h3>完成を重ねる</h3><p>規定時間ごとにピースを追加。手帳は完成状態のまま、次の1枚に向けて使い続けられます。</p></article>
           </div>
         </div>
       </section>

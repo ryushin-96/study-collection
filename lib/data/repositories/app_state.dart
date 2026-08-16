@@ -306,6 +306,19 @@ class AppState extends ChangeNotifier {
       if (notebooks.isEmpty) return [];
       active = notebooks.last;
     }
+    return _piecesForNotebook(active);
+  }
+
+  /// All pieces across every notebook, newest notebooks first. This is kept
+  /// separate from [derivedPieces], which represents the currently displayed
+  /// notebook and is used by notebook-specific screens.
+  List<Map<String, dynamic>> get collectionPieces {
+    final orderedNotebooks = [...notebooks]
+      ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    return orderedNotebooks.expand(_piecesForNotebook).toList(growable: false);
+  }
+
+  List<Map<String, dynamic>> _piecesForNotebook(Notebook active) {
     final startedAt = active.startedAt;
     final goal = notebookThemes
         .firstWhere(
@@ -537,8 +550,9 @@ class AppState extends ChangeNotifier {
     );
     collections.removeWhere((entry) => entry.id == id);
     collections.insert(0, item);
-    // mark active notebook as completed by clearing active, but keep app ready
-    activeNotebookId = null;
+    // Keep the notebook active after completion. Additional study time starts
+    // filling the next collection piece while the notebook photo stays fully
+    // developed.
   }
 
   Future<void> updateSubjects(List<String> values) async {
