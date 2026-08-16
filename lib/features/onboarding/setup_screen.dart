@@ -4,12 +4,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../../app/common_widgets.dart';
 import '../../app/theme.dart';
 import '../../data/models/notebook_theme.dart';
 import '../../data/repositories/app_state.dart';
+import '../../data/storage/image_storage.dart';
 
 class SetupScreen extends StatefulWidget {
   const SetupScreen({super.key, required this.state});
@@ -36,17 +36,17 @@ class _SetupScreenState extends State<SetupScreen> {
       maxWidth: 1800,
     );
     if (picked == null) return;
-    final directory = await getApplicationDocumentsDirectory();
-    final extension = picked.path.split('.').last;
-    final destination =
-        '${directory.path}/oshi_${DateTime.now().millisecondsSinceEpoch}.$extension';
-        await File(picked.path).copy(destination);
-        // Pre-cache a resized version to avoid heavy first-frame decode
-        try {
-          if (!mounted) return;
-          await precacheImage(ResizeImage(FileImage(File(destination)), width: 1200), context);
-        } catch (_) {}
-        if (mounted) setState(() => imagePath = destination);
+    final storedPath = await ImageStorage.import(picked.path);
+    final destination = ImageStorage.resolve(storedPath);
+    // Pre-cache a resized version to avoid heavy first-frame decode
+    try {
+      if (!mounted) return;
+      await precacheImage(
+        ResizeImage(FileImage(File(destination)), width: 1200),
+        context,
+      );
+    } catch (_) {}
+    if (mounted) setState(() => imagePath = storedPath);
   }
 
   Future<void> create() async {
@@ -74,13 +74,18 @@ class _SetupScreenState extends State<SetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-          child: step == 0 ? intro() : photoStep(),
-        ),
-      ),
+    return AnimatedBuilder(
+      animation: widget.state,
+      builder: (context, _) {
+        return Scaffold(
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+              child: step == 0 ? intro() : photoStep(),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -117,8 +122,6 @@ class _SetupScreenState extends State<SetupScreen> {
     ],
   );
 
-  
-
   String _goalLabel(NotebookThemeData item) {
     if (item.debugOnly) return '10秒で完成';
     if (item.id == 'heart') return '0〜1時間';
@@ -128,7 +131,9 @@ class _SetupScreenState extends State<SetupScreen> {
 
   Widget photoStep() {
     return SingleChildScrollView(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: Column(
         key: const ValueKey('photo'),
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,7 +152,9 @@ class _SetupScreenState extends State<SetupScreen> {
             decoration: const InputDecoration(labelText: 'デフォルト教科（未指定可）'),
             items: [
               const DropdownMenuItem<String?>(value: null, child: Text('未指定')),
-              ...widget.state.subjects.map((s) => DropdownMenuItem<String?>(value: s, child: Text(s)))
+              ...widget.state.subjects.map(
+                (s) => DropdownMenuItem<String?>(value: s, child: Text(s)),
+              ),
             ],
             onChanged: (v) => setState(() => defaultSubject = v),
           ),
@@ -186,7 +193,10 @@ class _SetupScreenState extends State<SetupScreen> {
                         ),
                       ],
                     )
-                  : Image.file(File(imagePath!), fit: BoxFit.cover),
+                  : Image.file(
+                      File(ImageStorage.resolve(imagePath!)),
+                      fit: BoxFit.cover,
+                    ),
             ),
           ),
           const SizedBox(height: 20),
@@ -198,6 +208,7 @@ class _SetupScreenState extends State<SetupScreen> {
       ),
     );
   }
+
   Widget setupHeader(String title, int active) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [

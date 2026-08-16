@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="推しとStudy — 勉強した時間で、見えなかった推しの一枚を育てる学習タイマー。"
+    />
+    <meta name="theme-color" content="#fff9f5" />
+    <title>推しとStudy — 勉強するほど、推しが見えてくる。</title>
+    <style>
+      :root {
+        --ink: #46384c;
+        --muted: #8a7a8e;
+        --pink: #ff7fa5;
+        --pink-deep: #ef608c;
+        --paper: #fff9f5;
+        --line: #eadde5;
+        --lavender: #d9c8ff;
+        --white: #ffffff;
+        --shadow: 0 24px 70px rgba(101, 70, 92, 0.14);
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 8% 8%, rgba(255, 181, 205, 0.3), transparent 24rem),
+          radial-gradient(circle at 92% 35%, rgba(217, 200, 255, 0.3), transparent 28rem),
+          var(--paper);
+        font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+        line-height: 1.75;
+      }
+
+      a { color: inherit; }
+      .wrap { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 1px solid rgba(234, 221, 229, 0.75);
+        background: rgba(255, 249, 245, 0.86);
+        backdrop-filter: blur(16px);
+      }
+      nav {
+        min-height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+      .brand { font-weight: 900; letter-spacing: -0.04em; font-size: 1.18rem; text-decoration: none; }
+      .brand span { color: var(--pink-deep); }
+      .nav-links { display: flex; align-items: center; gap: 22px; font-size: 0.9rem; font-weight: 700; }
+      .nav-links a { text-decoration: none; }
+
+      .hero {
+        min-height: 720px;
+        display: grid;
+        grid-template-columns: 1.04fr 0.96fr;
+        align-items: center;
+        gap: 70px;
+        padding: 76px 0 92px;
+      }
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 20px;
+        color: var(--pink-deep);
+        font-size: 0.82rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+      }
+      .eyebrow::before { content: "♡"; font-size: 1.1rem; }
+      h1 {
+        margin: 0;
+        font-size: clamp(2.7rem, 5.8vw, 5.3rem);
+        line-height: 1.12;
+        letter-spacing: -0.07em;
+      }
+      .hero h1 em { color: var(--pink-deep); font-style: normal; }
+      .lead { max-width: 590px; margin: 28px 0 0; color: var(--muted); font-size: 1.08rem; }
+      .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
+      .button {
+        display: inline-flex;
+        min-height: 52px;
+        align-items: center;
+        justify-content: center;
+        padding: 0 24px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--white);
+        font-weight: 900;
+        text-decoration: none;
+        box-shadow: 0 8px 22px rgba(101, 70, 92, 0.07);
+      }
+      .button.primary { border-color: var(--pink); color: white; background: var(--pink); }
+
+      .phone {
+        width: min(390px, 92%);
+        margin: 0 auto;
+        padding: 12px;
+        border: 1px solid rgba(70, 56, 76, 0.12);
+        border-radius: 46px;
+        background: #332b36;
+        box-shadow: var(--shadow);
+        transform: rotate(2.5deg);
+      }
+      .screen {
+        overflow: hidden;
+        min-height: 650px;
+        padding: 22px 18px;
+        border-radius: 36px;
+        background: var(--paper);
+      }
+      .phone-bar { width: 92px; height: 5px; margin: 0 auto 22px; border-radius: 5px; background: #d9ced5; }
+      .screen-label { margin-bottom: 11px; font-size: 0.78rem; color: var(--muted); font-weight: 700; }
+      .photo {
+        position: relative;
+        overflow: hidden;
+        aspect-ratio: 4 / 4.45;
+        border: 8px solid white;
+        border-radius: 24px;
+        background:
+          radial-gradient(circle at 70% 22%, #fff3a8 0 5%, transparent 6%),
+          radial-gradient(circle at 35% 46%, #ff9fc1 0 7%, transparent 8%),
+          linear-gradient(145deg, #b2dcff, #d5c0ff 46%, #ffb7cd);
+        box-shadow: 0 13px 30px rgba(101, 70, 92, 0.13);
+      }
+      .photo::before {
+        content: "YOUR OSHI";
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 1.25rem;
+        font-weight: 900;
+        letter-spacing: 0.18em;
+      }
+      .photo::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(120deg, rgba(255,255,255,.7), rgba(255,255,255,.28));
+        backdrop-filter: blur(5px);
+        clip-path: inset(0 0 0 58%);
+      }
+      .progress-row { display: flex; justify-content: space-between; margin: 17px 2px 7px; font-size: .8rem; font-weight: 800; }
+      .progress-track { height: 9px; overflow: hidden; border-radius: 9px; background: #f0e4eb; }
+      .progress-track span { display: block; width: 42%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--pink), #caaaf7); }
+      .timer-card { margin-top: 17px; padding: 15px; border: 1px solid var(--line); border-radius: 20px; background: white; }
+      .subject { display: flex; justify-content: space-between; font-size: .83rem; font-weight: 800; }
+      .start { margin-top: 12px; padding: 12px; border-radius: 14px; color: white; background: var(--pink); text-align: center; font-size: .88rem; font-weight: 900; }
+
+      section { padding: 100px 0; }
+      .section-head { max-width: 680px; margin-bottom: 44px; }
+      h2 { margin: 0 0 14px; font-size: clamp(2rem, 4vw, 3.35rem); line-height: 1.23; letter-spacing: -0.055em; }
+      .section-head p { margin: 0; color: var(--muted); }
+      .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+      .card { min-height: 260px; padding: 30px; border: 1px solid var(--line); border-radius: 28px; background: rgba(255,255,255,.72); box-shadow: 0 14px 45px rgba(101,70,92,.06); }
+      .number { display: grid; width: 45px; height: 45px; place-items: center; margin-bottom: 44px; border-radius: 16px; color: var(--pink-deep); background: #fff0f5; font-weight: 900; }
+      .card h3 { margin: 0 0 8px; font-size: 1.18rem; }
+      .card p { margin: 0; color: var(--muted); font-size: .94rem; }
+
+      .feature-panel {
+        display: grid;
+        grid-template-columns: .9fr 1.1fr;
+        gap: 55px;
+        align-items: center;
+        padding: 58px;
+        border: 1px solid var(--line);
+        border-radius: 38px;
+        background: linear-gradient(140deg, rgba(255,255,255,.92), rgba(255,240,247,.9));
+      }
+      .feature-list { display: grid; gap: 12px; }
+      .feature-item { display: flex; gap: 14px; align-items: flex-start; padding: 17px 18px; border-radius: 18px; background: white; box-shadow: 0 8px 24px rgba(101,70,92,.06); }
+      .check { flex: 0 0 auto; color: var(--pink-deep); font-weight: 900; }
+      .feature-item strong { display: block; }
+      .feature-item small { color: var(--muted); }
+
+      .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; counter-reset: step; }
+      .step { position: relative; padding: 28px 24px; border-top: 2px solid var(--line); }
+      .step::before { counter-increment: step; content: "0" counter(step); display: block; margin-bottom: 20px; color: var(--pink-deep); font-size: .8rem; font-weight: 900; }
+      .step h3 { margin: 0 0 7px; font-size: 1rem; }
+      .step p { margin: 0; color: var(--muted); font-size: .88rem; }
+
+      .closing { padding-bottom: 120px; text-align: center; }
+      .closing-box { padding: 75px 24px; border-radius: 40px; background: linear-gradient(135deg, #ff92b3, #c8abf2); color: white; box-shadow: var(--shadow); }
+      .closing h2 { max-width: 680px; margin: 0 auto 16px; }
+      .closing p { margin: 0; opacity: .9; }
+      footer { padding: 28px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: .82rem; }
+      .legal { padding-top: 30px; }
+      .legal-grid { display: grid; gap: 14px; }
+      details { border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.8); }
+      summary { padding: 20px 24px; cursor: pointer; font-size: 1.05rem; font-weight: 900; }
+      .legal-body { padding: 0 24px 25px; color: var(--muted); font-size: .92rem; }
+      .legal-body h3 { margin: 24px 0 5px; color: var(--ink); font-size: 1rem; }
+      .legal-body p { margin: 5px 0; }
+      .support-card { padding: 34px; border: 1px solid var(--line); border-radius: 26px; background: white; box-shadow: 0 14px 45px rgba(101,70,92,.06); }
+      .support-card h3 { margin: 0 0 8px; }
+      footer .wrap { display: flex; justify-content: space-between; gap: 20px; }
+
+      @media (max-width: 820px) {
+        .nav-links a:not(.button) { display: none; }
+        .hero { grid-template-columns: 1fr; gap: 54px; padding-top: 58px; }
+        .hero-copy { text-align: center; }
+        .lead { margin-inline: auto; }
+        .actions { justify-content: center; }
+        .cards { grid-template-columns: 1fr; }
+        .card { min-height: 0; }
+        .number { margin-bottom: 28px; }
+        .feature-panel { grid-template-columns: 1fr; padding: 34px 22px; }
+        .steps { grid-template-columns: repeat(2, 1fr); }
+      }
+      @media (max-width: 520px) {
+        .wrap { width: min(100% - 28px, 1120px); }
+        .nav-links .button { min-height: 42px; padding: 0 16px; }
+        .hero { min-height: auto; }
+        section { padding: 76px 0; }
+        .steps { grid-template-columns: 1fr; }
+        .phone { width: 100%; transform: none; }
+        .screen { min-height: 590px; }
+        footer .wrap { display: block; }
+      }
+      @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <nav class="wrap" aria-label="メインナビゲーション">
+        <a class="brand" href="#top">推しと<span>Study</span></a>
+        <div class="nav-links">
+          <a href="#features">できること</a>
+          <a href="#howto">使い方</a>
+          <a class="button" href="#contact">お問い合わせ</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="top">
+      <div class="hero wrap">
+        <div class="hero-copy">
+          <p class="eyebrow">STUDY COLLECTION APP</p>
+          <h1>勉強するほど、<br /><em>推しが見えてくる。</em></h1>
+          <p class="lead">
+            勉強した時間で、見えなかった推しの一枚を育てる学習タイマー。
+            小さな頑張りが写真の変化になって、今日の「始めよう」を後押しします。
+          </p>
+          <div class="actions">
+            <a class="button primary" href="#howto">使い方を見る</a>
+            <a class="button" href="#features">機能を知る</a>
+          </div>
+        </div>
+
+        <div class="phone" aria-label="アプリ画面のイメージ">
+          <div class="screen">
+            <div class="phone-bar"></div>
+            <div class="screen-label">わたしのStudy手帳 ♡</div>
+            <div class="photo"></div>
+            <div class="progress-row"><span>現像中</span><span>42%</span></div>
+            <div class="progress-track"><span></span></div>
+            <div class="timer-card">
+              <div class="subject"><span>今日の教科</span><span>英語⌄</span></div>
+              <div class="start">ストップウォッチを始める</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section id="concept">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">WHY OSHI TO STUDY?</p>
+            <h2>勉強時間を、眺めたくなる思い出に。</h2>
+            <p>数字だけでは気づきにくい努力を、少しずつ鮮明になる一枚の写真として残します。</p>
+          </div>
+          <div class="cards">
+            <article class="card">
+              <div class="number">01</div>
+              <h3>1秒から進む</h3>
+              <p>短い勉強でも、その時間に比例して白いヴェールが薄くなります。頑張りを無駄にしません。</p>
+            </article>
+            <article class="card">
+              <div class="number">02</div>
+              <h3>好きがきっかけになる</h3>
+              <p>「もう少し写真を見たい」という気持ちが、机に向かう最初の一歩になります。</p>
+            </article>
+            <article class="card">
+              <div class="number">03</div>
+              <h3>努力がコレクションに</h3>
+              <p>完成した手帳はコレクションへ。勉強した時間と教科を、一枚ごとの思い出として振り返れます。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="features">
+        <div class="wrap feature-panel">
+          <div>
+            <p class="eyebrow">FEATURES</p>
+            <h2>かわいいだけじゃない、続けるための機能。</h2>
+            <p class="lead">計測・記録・振り返りまで、勉強の流れをひとつの手帳にまとめます。</p>
+          </div>
+          <div class="feature-list">
+            <div class="feature-item"><span class="check">♡</span><div><strong>ストップウォッチ＆タイマー</strong><small>自分の勉強スタイルに合わせて計測できます。</small></div></div>
+            <div class="feature-item"><span class="check">♡</span><div><strong>教科ごとの学習記録</strong><small>教科を自由に追加し、デフォルト教科も設定できます。</small></div></div>
+            <div class="feature-item"><span class="check">♡</span><div><strong>手帳デザインと完成目標</strong><small>4種類の手帳から、目指したい勉強時間を選べます。</small></div></div>
+            <div class="feature-item"><span class="check">♡</span><div><strong>記録とコレクション</strong><small>今日・今週・合計の時間と、完成した推しフォトを残せます。</small></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="howto">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">HOW TO USE</p>
+            <h2>推しと始める、4つのステップ。</h2>
+          </div>
+          <div class="steps">
+            <article class="step"><h3>手帳を選ぶ</h3><p>好みのデザインと、完成までの目標時間を選びます。</p></article>
+            <article class="step"><h3>写真をセット</h3><p>端末から、育てたいお気に入りの一枚を設定します。</p></article>
+            <article class="step"><h3>勉強を計測</h3><p>教科を選び、ストップウォッチまたはタイマーを開始します。</p></article>
+            <article class="step"><h3>完成を集める</h3><p>勉強するほど写真が見え、100%になるとコレクションへ加わります。</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="closing">
+        <div class="wrap closing-box">
+          <h2>今日の頑張りを、推しに会える時間へ。</h2>
+          <p>推しとStudyで、小さな「できた」を一枚ずつ集めよう。</p>
+        </div>
+      </section>
+
+      <section class="legal" id="policies">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">POLICY &amp; SUPPORT</p>
+            <h2>安心して使っていただくために。</h2>
+            <p>プライバシー、利用条件、サポート窓口についてご案内します。</p>
+          </div>
+          <div class="legal-grid">
+            <details id="privacy" open>
+              <summary>プライバシーポリシー</summary>
+              <div class="legal-body">
+                <p>制定日：2026年8月16日</p>
+                <p>推しとStudy（以下「本アプリ」）は、学習記録や選択した画像を外部サーバーへ送信せず、原則として利用者の端末内だけで処理・保存します。</p>
+                <h3>取り扱うデータ</h3><p>選択した画像、手帳のタイトル・メモ・デザイン・デフォルト教科、教科名・学習日時・学習時間・タイマー設定、完成した手帳とコレクション情報を端末内で取り扱います。氏名、住所、電話番号、メールアドレス、正確な位置情報、連絡先、広告識別子は収集せず、アカウント登録もありません。</p>
+                <h3>取得方法と利用目的</h3><p>画像は利用者が明示的に選んだ場合のみ取得します。その他の情報はアプリ内操作に応じて作成され、学習時間の計測・集計、画像表示の更新、手帳・記録・コレクションの表示、状態復元にのみ使用します。広告、追跡、プロファイリング、販売には使用しません。</p>
+                <h3>保存・保持・削除</h3><p>データは端末内に保存され、利用者が削除するまで保持されます。手帳の削除またはアプリ内の全データ初期化で削除できます。アンインストール時も通常は削除されますが、OS等のバックアップ内に一定期間残る場合があります。</p>
+                <h3>第三者提供と安全管理</h3><p>画像、学習記録、設定を開発者または第三者へ送信・販売・提供しません。現時点で広告SDK、アクセス解析SDK、クラッシュ解析SDKは使用していません。App StoreやOS標準機能に伴いAppleが扱うデータにはAppleのポリシーが適用されます。</p>
+                <h3>子どものプライバシーと変更</h3><p>年齢を問わず個人情報の入力を求めず、保護者の同意が必要な個人情報を意図的に収集しません。本ポリシーの重要な変更は本ページまたはアプリ内でお知らせします。</p>
+              </div>
+            </details>
+            <details id="terms">
+              <summary>利用規約</summary>
+              <div class="legal-body">
+                <p>制定日：2026年8月16日</p>
+                <p>本アプリを利用することで本規約に同意したものとみなします。本アプリは学習時間を計測・記録し、選択画像の変化やコレクションを楽しむ学習支援アプリであり、特定の学習成果、試験合格、成績向上は保証しません。</p>
+                <h3>画像と禁止事項</h3><p>利用する権利を持つ画像のみを設定してください。法令・公序良俗違反、第三者の著作権・肖像権・プライバシー等の権利侵害、不正利用・解析・妨害、安全性を損なう行為を禁止します。</p>
+                <h3>データ管理と免責</h3><p>データは原則として端末内に保存されます。端末の故障、紛失、機種変更、アプリ削除等に備え、利用者自身で端末を管理してください。本アプリは現状有姿で提供され、法令で認められる範囲で、利用または利用不能により生じた損害について責任を負いません。</p>
+                <h3>変更・停止・準拠法</h3><p>改善、保守、法令対応等のため、内容の変更または提供の停止・終了を行う場合があります。本規約は日本法に準拠します。</p>
+              </div>
+            </details>
+            <div class="support-card" id="contact">
+              <h3>お問い合わせ・サポート</h3>
+              <p>不具合、ご質問、ご意見はGitHubのサポート窓口からご連絡ください。端末・OS・アプリのバージョンと発生した操作を添えてください。不要な個人情報は記載しないでください。</p>
+              <a class="button primary" href="https://github.com/ryushin-dev/study-collection/issues/new" target="_blank" rel="noopener noreferrer">お問い合わせを作成する</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>© 推しとStudy</span>
+        <span><a href="#privacy">プライバシーポリシー</a> ・ <a href="#terms">利用規約</a> ・ <a href="#contact">お問い合わせ</a></span>
+      </div>
+    </footer>
+    <script>
+      function openLinkedPolicy() {
+        const target = document.querySelector(location.hash);
+        if (target && target.tagName === 'DETAILS') target.open = true;
+      }
+      window.addEventListener('hashchange', openLinkedPolicy);
+      openLinkedPolicy();
+    </script>
+  </body>
+</html>

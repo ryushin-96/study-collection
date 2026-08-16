@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../data/models/study_session.dart';
+import '../data/storage/image_storage.dart';
 import 'formatters.dart';
 import 'theme.dart';
 
@@ -123,7 +124,12 @@ class DevelopingPhoto extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final safeProgress = progress.clamp(0.0, 1.0);
-    final veilOpacity = safeProgress == 1
+    final resolvedImagePath = imagePath == null
+        ? null
+        : ImageStorage.resolve(imagePath!);
+    final imageMissing =
+        resolvedImagePath != null && !File(resolvedImagePath).existsSync();
+    final veilOpacity = imageMissing || safeProgress == 1
         ? 0.0
         : (1 - safeProgress).clamp(0.0, 1.0) * .92 + .08;
     return AspectRatio(
@@ -133,13 +139,25 @@ class DevelopingPhoto extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (imagePath != null)
+            if (resolvedImagePath != null && !imageMissing)
               Image(
-                image: ResizeImage(FileImage(File(imagePath!)), width: 800),
+                image: ResizeImage(
+                  FileImage(File(resolvedImagePath)),
+                  width: 800,
+                ),
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(color: Colors.white),
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: Colors.white,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(10),
+                  child: const Text(
+                    '画像を再設定してください',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: muted, fontSize: 11),
+                  ),
+                ),
               )
-            else
+            else if (imagePath == null)
               Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
@@ -157,6 +175,17 @@ class DevelopingPhoto extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
+                ),
+              )
+            else
+              Container(
+                color: Colors.white,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.all(10),
+                child: const Text(
+                  '画像を再設定してください',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: muted, fontSize: 11),
                 ),
               ),
             IgnorePointer(

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +7,7 @@ import '../models/collection_item.dart';
 import '../models/notebook.dart';
 import '../models/notebook_theme.dart';
 import '../models/study_session.dart';
+import '../storage/image_storage.dart';
 
 class AppState extends ChangeNotifier {
   static const _storageKey = 'study_collection_state_v1';
@@ -32,6 +32,7 @@ class AppState extends ChangeNotifier {
       return null;
     }
   }
+
   String? get activeImagePath => activeNotebook?.imagePath ?? imagePath;
   // pieceOverrides stores per-piece user edits (subject, seconds, ...)
   Map<String, Map<String, dynamic>> pieceOverrides = {};
@@ -65,7 +66,12 @@ class AppState extends ChangeNotifier {
 
   /// Progress (0..1) for a specific notebook
   double notebookProgressFor(Notebook nb) {
-    final goal = notebookThemes.firstWhere((t) => t.id == nb.theme, orElse: () => notebookThemes.firstWhere((it) => it.id == 'heart')).goalSeconds;
+    final goal = notebookThemes
+        .firstWhere(
+          (t) => t.id == nb.theme,
+          orElse: () => notebookThemes.firstWhere((it) => it.id == 'heart'),
+        )
+        .goalSeconds;
     if (goal <= 0) return 0;
     return (notebookSecondsFor(nb) / goal).clamp(0, 1).toDouble();
   }
@@ -76,11 +82,15 @@ class AppState extends ChangeNotifier {
   /// Top subject for a given notebook
   String topSubjectFor(Notebook nb) {
     final totals = <String, int>{};
-    for (final session in sessions.where((s) => s.notebookId == nb.id && !s.at.isBefore(nb.startedAt))) {
-      totals[session.subject] = (totals[session.subject] ?? 0) + session.seconds;
+    for (final session in sessions.where(
+      (s) => s.notebookId == nb.id && !s.at.isBefore(nb.startedAt),
+    )) {
+      totals[session.subject] =
+          (totals[session.subject] ?? 0) + session.seconds;
     }
     if (totals.isEmpty) return 'まだなし';
-    final entries = totals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final entries = totals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
     return entries.first.key;
   }
 
@@ -100,7 +110,11 @@ class AppState extends ChangeNotifier {
     if (active == null) return const [];
     final startedAt = active.startedAt;
     return sessions
-        .where((session) => session.notebookId == active.id && !session.at.isBefore(startedAt))
+        .where(
+          (session) =>
+              session.notebookId == active.id &&
+              !session.at.isBefore(startedAt),
+        )
         .toList();
   }
 
@@ -127,8 +141,10 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> load() async {
+    await ImageStorage.initialize();
     final preferences = await SharedPreferences.getInstance();
     final raw = preferences.getString(_storageKey);
+    var imagePathsMigrated = false;
     if (raw != null) {
       try {
         final json = jsonDecode(raw) as Map<String, dynamic>;
@@ -145,20 +161,24 @@ class AppState extends ChangeNotifier {
                 ?.map((item) => item as String)
                 .toList() ??
             subjects;
-        sessions = (json['sessions'] as List<dynamic>?)
+        sessions =
+            (json['sessions'] as List<dynamic>?)
                 ?.map(
                   (item) => StudySession.fromJson(item as Map<String, dynamic>),
                 )
                 .toList() ??
             [];
-        collections = (json['collections'] as List<dynamic>?)
+        collections =
+            (json['collections'] as List<dynamic>?)
                 ?.map(
-                  (item) => CollectionItem.fromJson(item as Map<String, dynamic>),
+                  (item) =>
+                      CollectionItem.fromJson(item as Map<String, dynamic>),
                 )
                 .toList() ??
             [];
         // load notebooks if present (new schema)
-        notebooks = (json['notebooks'] as List<dynamic>?)
+        notebooks =
+            (json['notebooks'] as List<dynamic>?)
                 ?.map((n) => Notebook.fromJson(n as Map<String, dynamic>))
                 .toList() ??
             [];
@@ -179,23 +199,81 @@ class AppState extends ChangeNotifier {
           activeNotebookId = id;
           // assign sessions without notebookId to this notebook
           sessions = sessions
-              .map((s) => s.notebookId == null ? StudySession(at: s.at, subject: s.subject, seconds: s.seconds, notebookId: id) : s)
+              .map(
+                (s) => s.notebookId == null
+                    ? StudySession(
+                        at: s.at,
+                        subject: s.subject,
+                        seconds: s.seconds,
+                        notebookId: id,
+                      )
+                    : s,
+              )
               .toList();
         }
         // load pieceOverrides if present
-        pieceOverrides = (json['pieceOverrides'] as Map<String, dynamic>?)
-            ?.map((k, v) => MapEntry(
-                  k,
-                  (v as Map<String, dynamic>).map(
-                    (kk, vv) => MapEntry(kk, vv),
-                  ),
-                )) ?? {};
+        pieceOverrides =
+            (json['pieceOverrides'] as Map<String, dynamic>?)?.map(
+              (k, v) => MapEntry(
+                k,
+                (v as Map<String, dynamic>).map((kk, vv) => MapEntry(kk, vv)),
+              ),
+            ) ??
+            {};
+        imagePathsMigrated = await _migrateStoredImagePaths();
       } catch (_) {
         // 壊れたローカルデータは初期状態から再開する。
       }
     }
+    if (imagePathsMigrated) await save();
     initialized = true;
     notifyListeners();
+  }
+
+  Future<bool> _migrateStoredImagePaths() async {
+    var changed = false;
+
+    final migratedLegacyPath = await ImageStorage.migrate(imagePath);
+    changed |= migratedLegacyPath != imagePath;
+    imagePath = migratedLegacyPath;
+
+    final migratedNotebooks = <Notebook>[];
+    for (final notebook in notebooks) {
+      final migratedPath = await ImageStorage.migrate(notebook.imagePath);
+      changed |= migratedPath != notebook.imagePath;
+      migratedNotebooks.add(
+        Notebook(
+          id: notebook.id,
+          title: notebook.title,
+          theme: notebook.theme,
+          startedAt: notebook.startedAt,
+          imagePath: migratedPath,
+          defaultSubject: notebook.defaultSubject,
+          note: notebook.note,
+          completedAt: notebook.completedAt,
+        ),
+      );
+    }
+    notebooks = migratedNotebooks;
+
+    final migratedCollections = <CollectionItem>[];
+    for (final item in collections) {
+      final migratedPath = await ImageStorage.migrate(item.imagePath);
+      changed |= migratedPath != item.imagePath;
+      migratedCollections.add(
+        CollectionItem(
+          id: item.id,
+          title: item.title,
+          imagePath: migratedPath,
+          theme: item.theme,
+          completedAt: item.completedAt,
+          totalSeconds: item.totalSeconds,
+          topSubject: item.topSubject,
+        ),
+      );
+    }
+    collections = migratedCollections;
+    return changed;
   }
 
   Future<void> save() async {
@@ -229,11 +307,21 @@ class AppState extends ChangeNotifier {
       active = notebooks.last;
     }
     final startedAt = active.startedAt;
-    final goal = notebookThemes.firstWhere((t) => t.id == active.theme, orElse: () => notebookThemes.firstWhere((it) => it.id == 'heart')).goalSeconds;
+    final goal = notebookThemes
+        .firstWhere(
+          (t) => t.id == active.theme,
+          orElse: () => notebookThemes.firstWhere((it) => it.id == 'heart'),
+        )
+        .goalSeconds;
     if (goal <= 0) return [];
 
-    final sess = sessions.where((s) => s.notebookId == active.id && !s.at.isBefore(startedAt)).toList()
-      ..sort((a, b) => a.at.compareTo(b.at));
+    final sess =
+        sessions
+            .where(
+              (s) => s.notebookId == active.id && !s.at.isBefore(startedAt),
+            )
+            .toList()
+          ..sort((a, b) => a.at.compareTo(b.at));
 
     final List<Map<String, dynamic>> buckets = [];
     int remainingCapacity = goal;
@@ -253,8 +341,8 @@ class AppState extends ChangeNotifier {
           final top = bucketTotals.entries.isEmpty
               ? 'まだなし'
               : bucketTotals.entries
-                  .reduce((a, b) => a.value >= b.value ? a : b)
-                  .key;
+                    .reduce((a, b) => a.value >= b.value ? a : b)
+                    .key;
           buckets.add({'seconds': bucketFilled, 'subject': top});
           // reset
           remainingCapacity = goal;
@@ -267,7 +355,9 @@ class AppState extends ChangeNotifier {
     if (bucketFilled > 0) {
       final top = bucketTotals.entries.isEmpty
           ? 'まだなし'
-          : bucketTotals.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
+          : bucketTotals.entries
+                .reduce((a, b) => a.value >= b.value ? a : b)
+                .key;
       buckets.add({'seconds': bucketFilled, 'subject': top});
     }
 
@@ -279,7 +369,8 @@ class AppState extends ChangeNotifier {
       final isFull = seconds >= goal;
       final opacity = isFull ? 1.0 : (seconds / goal);
       final override = pieceOverrides[id];
-      final subject = override?['subject'] as String? ?? (b['subject'] as String);
+      final subject =
+          override?['subject'] as String? ?? (b['subject'] as String);
       final secondsOverride = override?['seconds'] as int? ?? seconds;
       pieces.add({
         'id': id,
@@ -295,7 +386,11 @@ class AppState extends ChangeNotifier {
   }
 
   /// Update per-piece override (subject and/or seconds). Persist and notify.
-  Future<void> updatePieceOverride(String pieceId, {String? subject, int? seconds}) async {
+  Future<void> updatePieceOverride(
+    String pieceId, {
+    String? subject,
+    int? seconds,
+  }) async {
     final existing = pieceOverrides[pieceId] ?? {};
     if (subject != null) existing['subject'] = subject;
     if (seconds != null) existing['seconds'] = seconds;
@@ -310,36 +405,17 @@ class AppState extends ChangeNotifier {
     String? defaultSubject,
     String? title,
   }) async {
-    // If running in debug build, reuse an existing debug notebook instead
-    // of creating many small test notebooks.
-    if (kDebugMode) {
-      try {
-        final existing = notebooks.firstWhere((n) => n.theme == 'debug');
-        activeNotebookId = existing.id;
-        // optionally update image if provided
-        if (selectedImagePath != null && existing.imagePath == null) {
-          notebooks = notebooks.map((n) => n.id == existing.id ? Notebook(id: n.id, title: n.title, theme: n.theme, startedAt: n.startedAt, imagePath: selectedImagePath, defaultSubject: n.defaultSubject, note: n.note, completedAt: n.completedAt) : n).toList();
-        }
-        // update legacy fields for compatibility
-        final nb = activeNotebook;
-        if (nb != null) {
-          theme = nb.theme;
-          imagePath = nb.imagePath;
-          notebookStartedAt = nb.startedAt;
-          title = nb.title;
-          ready = true;
-        }
-        await save();
-        notifyListeners();
-        return;
-      } catch (_) {}
-    }
+    // Always create a new notebook; in earlier POC code we reused a debug
+    // notebook which prevented creating new notebooks when running in
+    // debug mode. Remove that behavior so creation is consistent.
 
     final started = DateTime.now();
     final id = started.millisecondsSinceEpoch.toString();
     final nb = Notebook(
       id: id,
-      title: title == null || title.trim().isEmpty ? 'わたしのStudy手帳 ♡' : title.trim(),
+      title: title == null || title.trim().isEmpty
+          ? 'わたしのStudy手帳 ♡'
+          : title.trim(),
       theme: selectedTheme,
       startedAt: started,
       imagePath: selectedImagePath,
@@ -378,7 +454,22 @@ class AppState extends ChangeNotifier {
     final newTitle = trimmed.length > 30 ? trimmed.substring(0, 30) : trimmed;
     final targetId = notebookId ?? activeNotebookId;
     if (targetId != null) {
-      notebooks = notebooks.map((n) => n.id == targetId ? Notebook(id: n.id, title: newTitle, theme: n.theme, startedAt: n.startedAt, imagePath: n.imagePath, defaultSubject: n.defaultSubject, note: n.note, completedAt: n.completedAt) : n).toList();
+      notebooks = notebooks
+          .map(
+            (n) => n.id == targetId
+                ? Notebook(
+                    id: n.id,
+                    title: newTitle,
+                    theme: n.theme,
+                    startedAt: n.startedAt,
+                    imagePath: n.imagePath,
+                    defaultSubject: n.defaultSubject,
+                    note: n.note,
+                    completedAt: n.completedAt,
+                  )
+                : n,
+          )
+          .toList();
       // if updating active notebook, also sync legacy title
       if (activeNotebookId == targetId) title = newTitle;
     } else {
@@ -392,7 +483,22 @@ class AppState extends ChangeNotifier {
   Future<void> updateNotebookNote(String? note, {String? notebookId}) async {
     final targetId = notebookId ?? activeNotebookId;
     if (targetId == null) return;
-    notebooks = notebooks.map((n) => n.id == targetId ? Notebook(id: n.id, title: n.title, theme: n.theme, startedAt: n.startedAt, imagePath: n.imagePath, defaultSubject: n.defaultSubject, note: note, completedAt: n.completedAt) : n).toList();
+    notebooks = notebooks
+        .map(
+          (n) => n.id == targetId
+              ? Notebook(
+                  id: n.id,
+                  title: n.title,
+                  theme: n.theme,
+                  startedAt: n.startedAt,
+                  imagePath: n.imagePath,
+                  defaultSubject: n.defaultSubject,
+                  note: note,
+                  completedAt: n.completedAt,
+                )
+              : n,
+        )
+        .toList();
     await save();
     notifyListeners();
   }
@@ -403,7 +509,12 @@ class AppState extends ChangeNotifier {
   }) async {
     if (seconds <= 0) return;
     sessions.add(
-      StudySession(at: DateTime.now(), subject: subject, seconds: seconds, notebookId: activeNotebookId),
+      StudySession(
+        at: DateTime.now(),
+        subject: subject,
+        seconds: seconds,
+        notebookId: activeNotebookId,
+      ),
     );
     await _syncCollectionIfCompleted();
     await save();
@@ -457,7 +568,11 @@ class AppState extends ChangeNotifier {
     }
     if (nb == null) return;
     // collect collection image paths to delete for this notebook id
-    final collectionPaths = collections.where((c) => c.id == id).map((c) => c.imagePath).whereType<String>().toList();
+    final collectionPaths = collections
+        .where((c) => c.id == id)
+        .map((c) => c.imagePath)
+        .whereType<String>()
+        .toList();
     // remove notebook and its sessions
     notebooks.removeWhere((n) => n.id == id);
     sessions.removeWhere((s) => s.notebookId == id);
@@ -469,8 +584,7 @@ class AppState extends ChangeNotifier {
     pathsToDelete.addAll(collectionPaths);
     for (final p in pathsToDelete) {
       try {
-        final f = File(p);
-        if (await f.exists()) await f.delete();
+        await ImageStorage.delete(p);
       } catch (_) {
         // ignore file deletion errors
       }
@@ -490,20 +604,14 @@ class AppState extends ChangeNotifier {
   Future<void> reset() async {
     // delete all stored images for notebooks and collections
     for (final n in notebooks) {
-      if (n.imagePath != null) {
-        try {
-          final f = File(n.imagePath!);
-          if (await f.exists()) await f.delete();
-        } catch (_) {}
-      }
+      try {
+        await ImageStorage.delete(n.imagePath);
+      } catch (_) {}
     }
     for (final c in collections) {
-      if (c.imagePath != null) {
-        try {
-          final f = File(c.imagePath!);
-          if (await f.exists()) await f.delete();
-        } catch (_) {}
-      }
+      try {
+        await ImageStorage.delete(c.imagePath);
+      } catch (_) {}
     }
     final preferences = await SharedPreferences.getInstance();
     await preferences.remove(_storageKey);

@@ -5,9 +5,20 @@ import '../../app/common_widgets.dart';
 import '../../app/theme.dart';
 import '../../data/repositories/app_state.dart';
 
-Future<void> showSubjectManager(BuildContext context, AppState state) async {
+Future<bool> showSubjectManager(BuildContext context, AppState state) async {
   final values = [...state.subjects];
-  await showModalBottomSheet<void>(
+  var pendingSubject = '';
+
+  void addPendingSubject(void Function(VoidCallback fn) setSheetState) {
+    final name = pendingSubject.trim();
+    if (name.isEmpty || values.contains(name)) return;
+    setSheetState(() {
+      values.add(name);
+      pendingSubject = '';
+    });
+  }
+
+  final result = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     builder: (sheetContext) => StatefulBuilder(
@@ -41,24 +52,25 @@ Future<void> showSubjectManager(BuildContext context, AppState state) async {
               ),
             ),
             TextField(
+              key: ValueKey(values.length),
               decoration: const InputDecoration(
                 hintText: '例：英検、古文、情報',
                 labelText: '新しい教科',
               ),
+              onChanged: (value) => pendingSubject = value,
               onSubmitted: (value) {
-                final name = value.trim();
-                if (name.isNotEmpty && !values.contains(name)) {
-                  setSheetState(() => values.add(name));
-                }
+                pendingSubject = value;
+                addPendingSubject(setSheetState);
               },
             ),
             const SizedBox(height: 12),
             PrimaryButton(
               label: '保存',
               onPressed: () async {
+                addPendingSubject(setSheetState);
                 if (values.isEmpty) return;
                 await state.updateSubjects(values);
-                if (context.mounted) Navigator.pop(context);
+                if (context.mounted) Navigator.pop(context, true);
               },
             ),
           ],
@@ -66,4 +78,5 @@ Future<void> showSubjectManager(BuildContext context, AppState state) async {
       ),
     ),
   );
+  return result == true;
 }

@@ -10,6 +10,7 @@ import '../../app/common_widgets.dart';
 import '../../app/formatters.dart';
 import '../../app/theme.dart';
 import '../../data/repositories/app_state.dart';
+import '../../data/storage/image_storage.dart';
 
 class StudyTimerPage extends StatefulWidget {
   const StudyTimerPage({
@@ -54,7 +55,8 @@ class _StudyTimerPageState extends State<StudyTimerPage>
       if (!mounted) return;
       setState(() {});
       if (widget.countdownSeconds != null &&
-          elapsed >= widget.countdownSeconds! && running) {
+          elapsed >= widget.countdownSeconds! &&
+          running) {
         // stop timer and finish automatically when countdown reaches zero
         timer?.cancel();
         finish();
@@ -150,122 +152,132 @@ class _StudyTimerPageState extends State<StudyTimerPage>
                   child: Container(
                     decoration: BoxDecoration(
                       image: DecorationImage(
-                        image: ResizeImage(FileImage(File(widget.state.activeImagePath!)), width: 1200),
+                        image: ResizeImage(
+                          FileImage(
+                            File(
+                              ImageStorage.resolve(
+                                widget.state.activeImagePath!,
+                              ),
+                            ),
+                          ),
+                          width: 1200,
+                        ),
                         fit: BoxFit.cover,
-                        colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.25), BlendMode.darken),
+                        colorFilter: ColorFilter.mode(
+                            Colors.black.withValues(alpha: 0.25),
+                          BlendMode.darken,
+                        ),
                       ),
                     ),
                   ),
                 ),
               )
             else
-              Positioned.fill(
-                child: Container(color: const Color(0xFF40364A)),
-              ),
+              Positioned.fill(child: Container(color: const Color(0xFF40364A))),
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(22),
                 child: LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxHeight < 650;
-                return Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  builder: (context, constraints) {
+                    final compact = constraints.maxHeight < 650;
+                    return Column(
                       children: [
-                        IconButton(
-                          onPressed: cancel,
-                          tooltip: '取り消して戻る',
-                          icon: const Icon(
-                            CupertinoIcons.xmark,
-                            color: Colors.white,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            IconButton(
+                              onPressed: cancel,
+                              tooltip: '取り消して戻る',
+                              icon: const Icon(
+                                CupertinoIcons.xmark,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const Text(
+                              '集中タイム',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            SoftPill(label: widget.subject),
+                          ],
+                        ),
+                        const Spacer(),
+                        SizedBox(
+                          width: compact ? 120 : 210,
+                          child: DevelopingPhoto(
+                            imagePath: widget.state.activeImagePath,
+                            progress: totalProgress,
                           ),
                         ),
-                        const Text(
-                          '集中タイム',
+                        SizedBox(height: compact ? 12 : 30),
+                        Text(
+                          formatClock(shownSeconds),
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 20,
+                            fontSize: compact ? 48 : 64,
                             fontWeight: FontWeight.w900,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
-                        SoftPill(label: widget.subject),
-                      ],
-                    ),
-                    const Spacer(),
-                    SizedBox(
-                      width: compact ? 120 : 210,
-                      child: DevelopingPhoto(
-                        imagePath: widget.state.activeImagePath,
-                        progress: totalProgress,
-                      ),
-                    ),
-                    SizedBox(height: compact ? 12 : 30),
-                    Text(
-                      formatClock(shownSeconds),
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: compact ? 48 : 64,
-                        fontWeight: FontWeight.w900,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      totalProgress >= 1
-                          ? 'フォトが完成しました！'
-                          : '完成まであと ${formatDuration(((1 - totalProgress) * widget.state.currentTheme.goalSeconds).round())}',
-                      style: const TextStyle(color: Color(0xFFD6C9D9)),
-                    ),
-                    SizedBox(height: compact ? 12 : 22),
-                    LinearProgressIndicator(
-                      value: totalProgress,
-                      minHeight: 7,
-                      borderRadius: BorderRadius.circular(20),
-                      backgroundColor: Colors.white12,
-                      color: pink,
-                    ),
-                    const Spacer(),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: PrimaryButton(
-                            label: '終了して記録',
-                            onPressed: finish,
-                          ),
+                        const SizedBox(height: 8),
+                        Text(
+                          totalProgress >= 1
+                              ? 'フォトが完成しました！'
+                              : '完成まであと ${formatDuration(((1 - totalProgress) * widget.state.currentTheme.goalSeconds).round())}',
+                          style: const TextStyle(color: Color(0xFFD6C9D9)),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: running ? pause : resume,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white24),
-                              minimumSize: const Size.fromHeight(54),
+                        SizedBox(height: compact ? 12 : 22),
+                        LinearProgressIndicator(
+                          value: totalProgress,
+                          minHeight: 7,
+                          borderRadius: BorderRadius.circular(20),
+                          backgroundColor: Colors.white12,
+                          color: pink,
+                        ),
+                        const Spacer(),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: PrimaryButton(
+                                label: '終了して記録',
+                                onPressed: finish,
+                              ),
                             ),
-                            child: Text(running ? '一時停止' : '再開'),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: running ? pause : resume,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  side: const BorderSide(color: Colors.white24),
+                                  minimumSize: const Size.fromHeight(54),
+                                ),
+                                child: Text(running ? '一時停止' : '再開'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: cancel,
+                          icon: const Icon(CupertinoIcons.clear, size: 16),
+                          label: const Text('記録せず取り消す'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white60,
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton.icon(
-                      onPressed: cancel,
-                      icon: const Icon(CupertinoIcons.clear, size: 16),
-                      label: const Text('記録せず取り消す'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.white60,
-                      ),
-                    ),
-                  ],
-                );
-              },
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
+          ],
         ),
-      ],
-    ),
-  ),
-);
+      ),
+    );
   }
 }

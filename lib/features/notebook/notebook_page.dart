@@ -4,13 +4,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../../app/common_widgets.dart';
 import '../../app/formatters.dart';
 import '../../app/theme.dart';
 import '../../data/models/notebook_theme.dart';
 import '../../data/repositories/app_state.dart';
+import '../../data/storage/image_storage.dart';
 import '../study_timer/study_timer_page.dart';
 import '../subjects/subject_manager.dart';
 
@@ -25,18 +25,37 @@ class NotebookPage extends StatefulWidget {
 
 class _NotebookPageState extends State<NotebookPage> {
   String? selectedSubject;
+  String? _selectedNotebookId;
+  String? _selectedNotebookDefaultSubject;
   bool countdown = false;
   int countdownSeconds = 1500;
+
+  String? _initialSubject(AppState state) {
+    final defaultSubject = state.displayNotebook?.defaultSubject;
+    if (defaultSubject != null && state.subjects.contains(defaultSubject)) {
+      return defaultSubject;
+    }
+    return state.subjects.firstOrNull;
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
-    selectedSubject ??= state.subjects.firstOrNull;
 
     return AnimatedBuilder(
       animation: state,
       builder: (context, _) {
         final display = state.displayNotebook;
+        final notebookChanged = _selectedNotebookId != display?.id;
+        final defaultChanged =
+            _selectedNotebookDefaultSubject != display?.defaultSubject;
+        if (notebookChanged ||
+            defaultChanged ||
+            !state.subjects.contains(selectedSubject)) {
+          selectedSubject = _initialSubject(state);
+          _selectedNotebookId = display?.id;
+          _selectedNotebookDefaultSubject = display?.defaultSubject;
+        }
         return ListView(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 30),
           children: [
@@ -62,16 +81,20 @@ class _NotebookPageState extends State<NotebookPage> {
                       child: DropdownButtonFormField<String?>(
                         isExpanded: true,
                         initialValue: display?.id,
-                        decoration: const InputDecoration(border: InputBorder.none),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                        ),
                         items: state.notebooks
-                            .map((n) => DropdownMenuItem<String?>(
-                                  value: n.id,
-                                  child: Text(
-                                    n.title,
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ))
+                            .map(
+                              (n) => DropdownMenuItem<String?>(
+                                value: n.id,
+                                child: Text(
+                                  n.title,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                            )
                             .toList(),
                         onChanged: (v) async {
                           if (v != null) await state.selectNotebook(v);
@@ -93,7 +116,10 @@ class _NotebookPageState extends State<NotebookPage> {
                             final id = display.id;
                             await state.deleteNotebook(id);
                           },
-                    icon: const Icon(CupertinoIcons.trash, color: Colors.redAccent),
+                    icon: const Icon(
+                      CupertinoIcons.trash,
+                      color: Colors.redAccent,
+                    ),
                     tooltip: '選択中の手帳を削除',
                   ),
                   TextButton(
@@ -124,12 +150,16 @@ class _NotebookPageState extends State<NotebookPage> {
                       ButtonSegment(value: true, label: Text('タイマー')),
                     ],
                     selected: {countdown},
-                    onSelectionChanged: (value) => setState(() => countdown = value.first),
+                    onSelectionChanged: (value) =>
+                        setState(() => countdown = value.first),
                   ),
                   const SizedBox(height: 12),
                   Material(
                     type: MaterialType.transparency,
                     child: DropdownButtonFormField<String>(
+                      key: ValueKey(
+                        '${display?.id}:${display?.defaultSubject}:${state.subjects.join('|')}',
+                      ),
                       initialValue: selectedSubject,
                       decoration: const InputDecoration(labelText: '教科'),
                       items: state.subjects
@@ -140,7 +170,8 @@ class _NotebookPageState extends State<NotebookPage> {
                             ),
                           )
                           .toList(),
-                      onChanged: (value) => setState(() => selectedSubject = value),
+                      onChanged: (value) =>
+                          setState(() => selectedSubject = value),
                     ),
                   ),
                   if (countdown) ...[
@@ -156,7 +187,8 @@ class _NotebookPageState extends State<NotebookPage> {
                         DropdownMenuItem(value: 2700, child: Text('45分')),
                         DropdownMenuItem(value: 3600, child: Text('60分')),
                       ],
-                      onChanged: (value) => setState(() => countdownSeconds = value ?? 1500),
+                      onChanged: (value) =>
+                          setState(() => countdownSeconds = value ?? 1500),
                     ),
                   ],
                   const SizedBox(height: 12),
@@ -169,16 +201,27 @@ class _NotebookPageState extends State<NotebookPage> {
                               builder: (_) => StudyTimerPage(
                                 state: state,
                                 subject: selectedSubject!,
-                                countdownSeconds: countdown ? countdownSeconds : null,
+                                countdownSeconds: countdown
+                                    ? countdownSeconds
+                                    : null,
                               ),
                             ),
                           ),
                   ),
                   TextButton(
                     onPressed: () async {
-                      await showSubjectManager(context, state);
-                      if (mounted) {
-                        setState(() => selectedSubject = state.subjects.firstOrNull);
+                      final saved = await showSubjectManager(context, state);
+                      if (!mounted || !context.mounted) return;
+                      if (saved) {
+                        setState(() {
+                          selectedSubject = _initialSubject(state);
+                          _selectedNotebookId = state.displayNotebook?.id;
+                          _selectedNotebookDefaultSubject =
+                              state.displayNotebook?.defaultSubject;
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('教科を保存しました')),
+                        );
                       }
                     },
                     child: const Text('＋ 教科の追加・編集・削除'),
@@ -203,7 +246,9 @@ class _NotebookPageState extends State<NotebookPage> {
 
   Future<void> editTitle() async {
     final display = widget.state.displayNotebook;
-    final controller = TextEditingController(text: display?.title ?? widget.state.title);
+    final controller = TextEditingController(
+      text: display?.title ?? widget.state.title,
+    );
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -231,7 +276,10 @@ class _NotebookPageState extends State<NotebookPage> {
     }
   }
 
-  Future<void> showCreateNotebookDialog(BuildContext context, AppState state) async {
+  Future<void> showCreateNotebookDialog(
+    BuildContext context,
+    AppState state,
+  ) async {
     final titleController = TextEditingController(text: 'わたしのStudy手帳 ♡');
     String? defaultSubject = state.subjects.firstOrNull;
     String? selectedImagePath;
@@ -243,15 +291,16 @@ class _NotebookPageState extends State<NotebookPage> {
         maxWidth: 1800,
       );
       if (picked == null) return;
-      final directory = await getApplicationDocumentsDirectory();
-      final extension = picked.path.split('.').last;
-      final destination = '${directory.path}/oshi_${DateTime.now().millisecondsSinceEpoch}.$extension';
-      await File(picked.path).copy(destination);
+      final storedPath = await ImageStorage.import(picked.path);
+      final destination = ImageStorage.resolve(storedPath);
       try {
         if (!mounted) return;
-        await precacheImage(ResizeImage(FileImage(File(destination)), width: 1200), context);
+        await precacheImage(
+          ResizeImage(FileImage(File(destination)), width: 1200),
+          context,
+        );
       } catch (_) {}
-      setLocalState(() => selectedImagePath = destination);
+      setLocalState(() => selectedImagePath = storedPath);
     }
 
     final result = await showDialog<bool>(
@@ -260,7 +309,10 @@ class _NotebookPageState extends State<NotebookPage> {
         final mq = MediaQuery.of(context);
         final maxH = mq.size.height * 0.6;
         return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 20,
+          ),
           child: ConstrainedBox(
             constraints: BoxConstraints(maxHeight: maxH),
             child: StatefulBuilder(
@@ -274,18 +326,38 @@ class _NotebookPageState extends State<NotebookPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('新しい手帳を作成', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                        const Text(
+                          '新しい手帳を作成',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                         const SizedBox(height: 12),
-                        TextField(controller: titleController, decoration: const InputDecoration(labelText: 'タイトル')),
+                        TextField(
+                          controller: titleController,
+                          decoration: const InputDecoration(labelText: 'タイトル'),
+                        ),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String?>(
                           value: defaultSubject,
-                          decoration: const InputDecoration(labelText: 'デフォルト教科（未指定可）'),
+                          decoration: const InputDecoration(
+                            labelText: 'デフォルト教科（未指定可）',
+                          ),
                           items: [
-                            const DropdownMenuItem<String?>(value: null, child: Text('未指定')),
-                            ...state.subjects.map((s) => DropdownMenuItem<String?>(value: s, child: Text(s)))
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('未指定'),
+                            ),
+                            ...state.subjects.map(
+                              (s) => DropdownMenuItem<String?>(
+                                value: s,
+                                child: Text(s),
+                              ),
+                            ),
                           ],
-                          onChanged: (v) => setLocalState(() => defaultSubject = v),
+                          onChanged: (v) =>
+                              setLocalState(() => defaultSubject = v),
                         ),
                         const SizedBox(height: 10),
                         GestureDetector(
@@ -296,23 +368,40 @@ class _NotebookPageState extends State<NotebookPage> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFE8CBD7), width: 2),
+                              border: Border.all(
+                                color: const Color(0xFFE8CBD7),
+                                width: 2,
+                              ),
                             ),
                             clipBehavior: Clip.antiAlias,
                             child: selectedImagePath == null
                                 ? const Center(
-                                    child: Text('写真を選択（オプション）', style: TextStyle(color: muted)),
+                                    child: Text(
+                                      '写真を選択（オプション）',
+                                      style: TextStyle(color: muted),
+                                    ),
                                   )
-                                : Image.file(File(selectedImagePath!), fit: BoxFit.cover),
+                                : Image.file(
+                                    File(
+                                      ImageStorage.resolve(selectedImagePath!),
+                                    ),
+                                    fit: BoxFit.cover,
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('キャンセル'),
+                            ),
                             const SizedBox(width: 8),
-                            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('作成')),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('作成'),
+                            ),
                           ],
                         ),
                       ],
@@ -333,6 +422,12 @@ class _NotebookPageState extends State<NotebookPage> {
         defaultSubject: defaultSubject,
         title: titleController.text,
       );
+      // Ensure the page rebuilds and provide feedback so user can see result.
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('手帳を作成しました')));
     }
   }
 }
@@ -348,11 +443,20 @@ class _NotebookCard extends StatelessWidget {
     final nb = state.displayNotebook;
     final displayTitle = nb?.title ?? state.title;
     final themeData = nb != null
-        ? notebookThemes.firstWhere((t) => t.id == nb.theme, orElse: () => notebookThemes.firstWhere((it) => it.id == 'heart'))
+        ? notebookThemes.firstWhere(
+            (t) => t.id == nb.theme,
+            orElse: () => notebookThemes.firstWhere((it) => it.id == 'heart'),
+          )
         : state.currentTheme;
-    final imagePath = nb != null ? state.notebookDisplayImagePath(nb) : state.activeImagePath;
-    final progress = nb != null ? state.notebookProgressFor(nb) : state.progress;
-    final seconds = nb != null ? state.notebookSecondsFor(nb) : state.notebookSeconds;
+    final imagePath = nb != null
+        ? state.notebookDisplayImagePath(nb)
+        : state.activeImagePath;
+    final progress = nb != null
+        ? state.notebookProgressFor(nb)
+        : state.progress;
+    final seconds = nb != null
+        ? state.notebookSecondsFor(nb)
+        : state.notebookSeconds;
     final topSubject = nb != null ? state.topSubjectFor(nb) : state.topSubject;
 
     return Container(
@@ -377,13 +481,12 @@ class _NotebookCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 7),
-                DevelopingPhoto(
-                  imagePath: imagePath,
-                  progress: progress,
-                ),
+                DevelopingPhoto(imagePath: imagePath, progress: progress),
                 const SizedBox(height: 7),
                 Text(
-                  progress >= 1.0 ? '100%・完成 ♡' : '${(progress * 100).round()}%・あと${formatDuration(themeData.goalSeconds - seconds)}',
+                  progress >= 1.0
+                      ? '100%・完成 ♡'
+                      : '${(progress * 100).round()}%・あと${formatDuration(themeData.goalSeconds - seconds)}',
                   style: const TextStyle(
                     color: muted,
                     fontSize: 10,
@@ -453,7 +556,9 @@ class _NotebookCard extends StatelessWidget {
                 ],
                 TextButton(
                   onPressed: () async {
-                    final controller = TextEditingController(text: nb?.note ?? '');
+                    final controller = TextEditingController(
+                      text: nb?.note ?? '',
+                    );
                     final res = await showDialog<bool>(
                       context: context,
                       builder: (context) => AlertDialog(
@@ -462,16 +567,29 @@ class _NotebookCard extends StatelessWidget {
                           controller: controller,
                           minLines: 3,
                           maxLines: 8,
-                          decoration: const InputDecoration(hintText: '今日の気づきやメモをここに書いてください'),
+                          decoration: const InputDecoration(
+                            hintText: '今日の気づきやメモをここに書いてください',
+                          ),
                         ),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
-                          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('保存')),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('キャンセル'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('保存'),
+                          ),
                         ],
                       ),
                     );
                     if (res == true) {
-                      await state.updateNotebookNote(controller.text.trim().isEmpty ? null : controller.text.trim(), notebookId: nb?.id);
+                      await state.updateNotebookNote(
+                        controller.text.trim().isEmpty
+                            ? null
+                            : controller.text.trim(),
+                        notebookId: nb?.id,
+                      );
                     }
                   },
                   child: const Text('手帳メモを編集'),
